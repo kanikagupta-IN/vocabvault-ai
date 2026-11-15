@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vocabvault-db
+    environment:
+      POSTGRES_DB: vocabvault
+      POSTGRES_USER: vocab
+      POSTGRES_PASSWORD: vocabpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vocab -d vocabvault"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  llama-server:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: vocabvault-llm
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./models:/models
+    # Automatically downloads & runs Qwen2.5-7B-Instruct GGUF from Hugging Face
+    command: >
+      --hf-repo Qwen/Qwen2.5-7B-Instruct-GGUF
+      --hf-file qwen2.5-7b-instruct-q4_k_m.gguf
+      --host 0.0.0.0
+      --port 8080
+      --ctx-size 4096
+      --jinja
+
+  tts-server:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: vocabvault-tts
+    ports:
+      - "8880:8880"
+
+  image-server:
+    image: localai/localai:latest-cpu
+    container_name: vocabvault-img
+    ports:
+      - "8082:8080"
+    environment:
+      - PRELOAD_MODELS=[{"url":"github:mudler/LocalAI/gallery/stablediffusion.yaml@master","name":"stablediffusion"}]
+    volumes:
+      - localai-models:/build/models
+
+  vocabvault-app:
+    build: .
+    container_name: vocabvault-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      llama-server:
+        condition: service_started
+      tts-server:
+        condition: service_started
+      image-server:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vocabvault
+      SPRING_DATASOURCE_USERNAME: vocab
+      SPRING_DATASOURCE_PASSWORD: vocabpassword
+      APP_LLM_BASE_URL: http://llama-server:8080
+      APP_IMG_BASE_URL: http://image-server:8080
+      APP_TTS_BASE_URL: http://tts-server:8880
+
+volumes:
+  pgdata:
+  localai-models:

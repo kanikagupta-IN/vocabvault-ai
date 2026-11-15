@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: vocabvault-ai
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/vocabvault}
+    username: ${SPRING_DATASOURCE_USERNAME:vocab}
+    password: ${SPRING_DATASOURCE_PASSWORD:vocabpassword}
+  sql:
+    init:
+      mode: always
+
+  ai:
+    openai:
+      api-key: not-needed-for-local
+      base-url: ${APP_LLM_BASE_URL:http://localhost:8081}
+      chat:
+        options:
+          model: qwen2.5-7b-instruct
+          temperature: 0.2
+      image:
+        base-url: ${APP_IMG_BASE_URL:http://localhost:8082}
+        options:
+          model: stablediffusion
+          size: 512x512
+          response-format: b64_json
+      audio:
+        speech:
+          base-url: ${APP_TTS_BASE_URL:http://localhost:8880}
+          options:
+            model: kokoro
+            voice: af_bella
+            response-format: mp3
