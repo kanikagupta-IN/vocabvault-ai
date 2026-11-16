@@ -1,4 +1,4 @@
-package com.vocabvault.vocabvault.dto;
+package com.vocabvault.dto;
 
 public class AiGeneratedCardData {
 }
