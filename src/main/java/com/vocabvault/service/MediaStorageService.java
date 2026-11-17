@@ -1,4 +1,4 @@
-package com.vocabvault.vocabvault.service;
+package com.vocabvault.service;
 
 public class MediaStorageService {
 }

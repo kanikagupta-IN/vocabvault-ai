@@ -1,6 +1,6 @@
 package com.vocabvault.service;
 
-import com.vocabvault.dto.FlashcardData;
+import com.vocabvault.dto.AiGeneratedFlashcardData;
 import com.vocabvault.model.Flashcard;
 import com.vocabvault.repository.FlashcardRepository;
 import com.vocabvault.tools.FlashcardDatabaseTools;
@@ -45,30 +45,33 @@ public class FlashcardService {
 
     public Flashcard createFlashcard(String word, String targetLanguage) throws IOException {
         // 1. Generate structured flashcard text via Ollama
-        FlashcardData data = chatClient.prompt()
-                .user(u -> u.text("""
-                        Create a language flashcard for the {language} word '{word}'.
-                        Provide the English translation, a single-word topic category,
-                        a short example sentence in {language}, and a descriptive image prompt.
+        // Step A: Generate structured definition & visual prompt via llama-server
+        AiGeneratedFlashcardData data = chatClient.prompt()
+                .system("""
+                        You are an expert language tutor. Given a vocabulary word and target language,
+                        provide a clear English definition, a natural example sentence in the target language
+                        with English translation, a single-word topic category, and a vivid visual scene
+                        description (under 25 words, no text inside the image) to help memorize the word.
                         """)
+                .user(u -> u.text("Word: {word}\nTarget Language: {language}")
                         .param("language", targetLanguage)
                         .param("word", word))
                 .call()
-                .entity(FlashcardData.class);
+                .entity(AiGeneratedFlashcardData.class);
 
-        // 2. Generate image via local Stable Diffusion
+        // Step B: Generate illustrative mnemonic image via open-source LocalAI Stable Diffusion
         var imageResponse = imageModel.call(new ImagePrompt(data.imagePrompt()));
         String base64Img = imageResponse.getResult().getOutput().getB64Json();
         String imageFilename = UUID.randomUUID() + ".png";
         Files.write(storageDir.resolve(imageFilename), Base64.getDecoder().decode(base64Img));
 
-        // 3. Generate pronunciation audio via local Kokoro/Piper TTS
+        // Step C: Generate native pronunciation audio via open-source local Kokoro TTS
         String textToSpeak = data.word() + ". " + data.exampleSentence();
         byte[] audioBytes = speechService.generateSpeechMp3(textToSpeak);
         String audioFilename = UUID.randomUUID() + ".mp3";
         Files.write(storageDir.resolve(audioFilename), audioBytes);
 
-        // 4. Save entity to PostgreSQL
+        // Step D: Store entity in PostgreSQL
         Flashcard card = new Flashcard(data, "/media/" + imageFilename, "/media/" + audioFilename);
         return repository.save(card);
     }
@@ -76,10 +79,11 @@ public class FlashcardService {
     public String askDatabaseWithPrompt(String userPrompt) {
         return chatClient.prompt()
                 .system("""
-                        You are a helpful language tutor assistant.
-                        Always use the 'queryFlashcards' tool to fetch real flashcards from the database
-                        when the user asks to study, review, or find words.
-                        Present the retrieved words, translations, example sentences, and media paths clearly.
+                        You are a database assistant for VocabVault AI.
+                        Use the 'queryFlashcards' tool to retrieve vocabulary data from PostgreSQL
+                        based on the user's request.
+                        Current timestamp function in PostgreSQL is CURRENT_TIMESTAMP.
+                        Summarize the extracted flashcards clearly for the learner.
                         """)
                 .user(userPrompt)
                 .tools(databaseTools)

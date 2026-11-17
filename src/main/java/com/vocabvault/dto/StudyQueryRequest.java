@@ -1,4 +1,6 @@
-package com.vocabvault.vocabvault.dto;
+package com.vocabvault.dto;
 
-public class StudyQueryRequest {
+public record StudyQueryRequest (
+        String prompt
+) {
 }

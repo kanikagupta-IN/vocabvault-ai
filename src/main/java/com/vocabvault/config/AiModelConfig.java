@@ -21,10 +21,12 @@ public class AiModelConfig {
             String prompt = request.getInstructions().get(0).getText();
 
             var payload = Map.of(
+                    "model", "stablediffusion",
                     "prompt", prompt + ", flat vector illustration, clean educational style",
                     "steps", 20,
                     "width", 512,
-                    "height", 512
+                    "height", 512,
+                    "response_format", "b64_json"
             );
 
             @SuppressWarnings("unchecked")
