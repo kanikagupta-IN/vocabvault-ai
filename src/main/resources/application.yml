@@ -31,12 +31,12 @@ spring:
           base-url: ${APP_TTS_BASE_URL:http://localhost:8880}
           options:
             model: kokoro
-            voice: af_bella
+#            voice: af_bella
             response-format: mp3
 
 app:
   media:
     storage-dir: ./media
-    ai:
-      stable-diffusion-url: http://localhost:8082/v1/images/generations
-      tts-url: http://localhost:8880/v1/audio/speech
+  ai:
+    stable-diffusion-url: http://localhost:8082/v1/images/generations
+    tts-url: http://localhost:8880/v1/audio/speech
